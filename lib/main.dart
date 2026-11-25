@@ -1,17 +1,35 @@
+
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:hivefl/screens/home_screen.dart';
+import 'package:provider/provider.dart';
+
+import 'providers/student_provider.dart';
+import 'screens/home_screen.dart';
 
 void main() async {
+
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize Hive
   await Hive.initFlutter();
 
-  // Open student box
+  // Open Student Box
   await Hive.openBox<Map>('students');
 
-  runApp(const MyApp());
+  runApp(
+    MultiProvider(
+      providers: [
+
+        ChangeNotifierProvider(
+          create: (context) => StudentProvider(
+            Hive.box<Map>('students'),
+          ),
+        ),
+
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {

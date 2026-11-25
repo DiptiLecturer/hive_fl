@@ -1,63 +1,43 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:hive/hive.dart';
-import 'package:hive_flutter/hive_flutter.dart';
+import 'package:provider/provider.dart';
+import '../providers/student_provider.dart';
 import '../widgets/student_dialog.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends StatelessWidget {
+
   const HomeScreen({super.key});
 
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-
-  // Access Hive Box
-  final Box<Map> studentBox = Hive.box<Map>('students');
-
-  // Add / Update Student Dialog
-  void showStudentDialog({int? index}) {
-
-    Map? student;
-
-    // If editing, get existing data
-    if (index != null) {
-      student = studentBox.getAt(index);
-    }
+  // ADD / UPDATE DIALOG
+  void showStudentDialog(
+      BuildContext context, {
+        int? index,
+        Map? student,
+      }) {
 
     showDialog(
       context: context,
       builder: (context) {
+
         return StudentDialog(
+          index: index,
           student: student,
-
-          onSave: (data) {
-
-            if (index == null) {
-
-              // CREATE
-              studentBox.add(data);
-
-            } else {
-
-              // UPDATE
-              studentBox.putAt(index, data);
-            }
-
-          },
         );
       },
     );
   }
 
-  // DELETE Student
-  void deleteStudent(int index) {
-    studentBox.deleteAt(index);
+  // DELETE STUDENT
+  void deleteStudent(BuildContext context, int index) {
+
+    Provider.of<StudentProvider>(
+      context,
+      listen: false,
+    ).deleteStudent(index);
   }
 
   @override
   Widget build(BuildContext context) {
+
     return Scaffold(
 
       appBar: AppBar(
@@ -65,82 +45,113 @@ class _HomeScreenState extends State<HomeScreen> {
         centerTitle: true,
       ),
 
-      body: ValueListenableBuilder(
-        valueListenable: studentBox.listenable(),
+      body: Consumer<StudentProvider>(
 
-        builder: (context, box, child) {
+        builder: (context, provider, child) {
 
-          if (box.isEmpty) {
+          final students = provider.students;
+
+          if (students.isEmpty) {
             return const Center(
               child: Text('No students found'),
             );
           }
 
-          return ListView.builder(
-            itemCount: box.length,
+          return Column(
+            children: [
 
-            itemBuilder: (context, index) {
-
-              final student = box.getAt(index)!;
-
-              return Card(
-                margin: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-
-                child: ListTile(
-
-                  leading: CircleAvatar(
-                    child: Text(
-                      student['name'].toString().isNotEmpty
-                          ? student['name'][0].toUpperCase()
-                          : '?',
-                    ),
-                  ),
-
-                  title: Text(student['name']),
-
-                  subtitle: Text(
-                    '${student['email']}\n${student['department']}',
-                  ),
-
-                  isThreeLine: true,
-
-                  trailing: PopupMenuButton(
-                    onSelected: (value) {
-
-                      if (value == 'edit') {
-                        showStudentDialog(index: index);
-                      }
-
-                      if (value == 'delete') {
-                        deleteStudent(index);
-                      }
-                    },
-
-                    itemBuilder: (context) => [
-                      const PopupMenuItem(
-                        value: 'edit',
-                        child: Text('Edit'),
-                      ),
-
-                      const PopupMenuItem(
-                        value: 'delete',
-                        child: Text('Delete'),
-                      ),
-                    ],
+              // TOTAL STUDENTS
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Text(
+                  'Total Students: ${provider.studentCount}',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-              );
-            },
+              ),
+
+              // STUDENT LIST
+              Expanded(
+                child: ListView.builder(
+
+                  itemCount: students.length,
+
+                  itemBuilder: (context, index) {
+
+                    final student = students[index];
+
+                    return Card(
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+
+                      child: ListTile(
+
+                        leading: CircleAvatar(
+                          child: Text(
+                            student['name'].toString()[0].toUpperCase(),
+                          ),
+                        ),
+
+                        title: Text(student['name']),
+
+                        subtitle: Text(
+                          '${student['email']}\n'
+                              '${student['department']}',
+                        ),
+
+                        isThreeLine: true,
+
+                        trailing: PopupMenuButton(
+
+                          onSelected: (value) {
+
+                            if (value == 'edit') {
+
+                              showStudentDialog(
+                                context,
+                                index: index,
+                                student: student,
+                              );
+                            }
+
+                            if (value == 'delete') {
+
+                              deleteStudent(context, index);
+                            }
+                          },
+
+                          itemBuilder: (context) => [
+
+                            const PopupMenuItem(
+                              value: 'edit',
+                              child: Text('Edit'),
+                            ),
+
+                            const PopupMenuItem(
+                              value: 'delete',
+                              child: Text('Delete'),
+                            ),
+
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
           );
         },
       ),
 
       floatingActionButton: FloatingActionButton(
-        onPressed: () => showStudentDialog(),
-
+        onPressed: () {
+          showStudentDialog(context);
+        },
         child: const Icon(Icons.add),
       ),
     );
